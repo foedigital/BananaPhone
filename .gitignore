@@ -1,0 +1,11 @@
+node_modules/
+.claude/
+.gemini/
+*.pdf
+nul
+test_thumb*.jpg
+thumb_*.jpg
+check_dimensions.js
+temp_sdk.js
+featurespackage/
+Protocol for effcient web development 12.19.25/
