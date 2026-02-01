@@ -27,6 +27,54 @@ body {
   overflow-x: hidden;
 }
 
+/* --------------------------------------------------------------------------
+   LOADER
+   -------------------------------------------------------------------------- */
+
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  transition: opacity 0.5s ease;
+}
+
+.loader.done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loader-logo {
+  width: clamp(140px, 30vw, 220px);
+  height: auto;
+  border-radius: 16px;
+}
+
+.loader-bar-track {
+  width: clamp(160px, 40vw, 280px);
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.loader-bar-fill {
+  width: 0%;
+  height: 100%;
+  background: #FFD700;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* --------------------------------------------------------------------------
+   BASE
+   -------------------------------------------------------------------------- */
+
 a {
   color: inherit;
   text-decoration: none;
@@ -303,12 +351,6 @@ section[id] {
   border: none;
   pointer-events: none;
   object-fit: cover;
-  opacity: 0;
-  transition: opacity 0.8s ease;
-}
-
-.hero-video-panel iframe.loaded {
-  opacity: 1;
 }
 
 .hero-overlay {

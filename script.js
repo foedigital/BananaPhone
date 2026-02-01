@@ -2,6 +2,32 @@
 //  BANANA PHONE - Scripts
 // ==========================================================================
 
+// ----------------------------------------------------------------------
+//  LOADING SCREEN — runs before DOMContentLoaded
+// ----------------------------------------------------------------------
+(function () {
+    const bar = document.getElementById('loader-bar');
+    const loader = document.getElementById('loader');
+    if (!bar || !loader) return;
+
+    let progress = 0;
+
+    // Tick progress forward in small increments, slowing as it nears 90%
+    const tick = setInterval(() => {
+        const remaining = 90 - progress;
+        progress += remaining * 0.06;
+        bar.style.width = progress + '%';
+    }, 120);
+
+    // Once the full page (images, iframes, etc.) has loaded, finish the bar
+    window.addEventListener('load', () => {
+        clearInterval(tick);
+        bar.style.width = '100%';
+        setTimeout(() => loader.classList.add('done'), 400);
+        setTimeout(() => loader.remove(), 900);
+    });
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // ----------------------------------------------------------------------
@@ -234,14 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
         iframe.allow = 'accelerometer; gyroscope; autoplay; encrypted-media;';
         iframe.allowFullscreen = true;
         panel.appendChild(iframe);
-        iframe.addEventListener('load', () => iframe.classList.add('loaded'));
         return iframe;
-    }
-
-    // Panel 1 iframe is already in the HTML — just wire up the fade-in
-    const panel1Iframe = heroPanels[0] && heroPanels[0].querySelector('iframe');
-    if (panel1Iframe) {
-        panel1Iframe.addEventListener('load', () => panel1Iframe.classList.add('loaded'));
     }
 
     // Panel 2 — inject after 3s so it doesn't compete with panel 1
