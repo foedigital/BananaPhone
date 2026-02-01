@@ -223,11 +223,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------------------------------------------------
-    //  HERO VIDEO CYCLING - rotate clips on each panel
+    //  HERO IMAGE CYCLING - rotate thumbnail stills on each panel
     // ----------------------------------------------------------------------
     const heroPanels = document.querySelectorAll('.hero-video-panel[data-clips]');
-    const CYCLE_INTERVAL = 8000; // ms between clip switches
-    const STAGGER = 3000; // offset between panels so they don't all switch at once
+    const CYCLE_INTERVAL = 5000; // ms between image switches
+    const STAGGER = 2000; // offset between panels
 
     heroPanels.forEach((panel, i) => {
         const clips = panel.dataset.clips.split(',');
@@ -237,9 +237,13 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             setInterval(() => {
                 index = (index + 1) % clips.length;
-                const iframe = panel.querySelector('iframe');
-                if (iframe) {
-                    iframe.src = `https://iframe.videodelivery.net/${clips[index]}?autoplay=true&muted=true&loop=true&controls=false&preload=auto`;
+                const img = panel.querySelector('img');
+                if (img) {
+                    img.style.opacity = '0';
+                    setTimeout(() => {
+                        img.src = `https://videodelivery.net/${clips[index]}/thumbnails/thumbnail.jpg?time=2s&height=720`;
+                        img.style.opacity = '1';
+                    }, 300);
                 }
             }, CYCLE_INTERVAL);
         }, i * STAGGER);
