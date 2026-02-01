@@ -223,29 +223,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------------------------------------------------
-    //  HERO IMAGE CYCLING - rotate thumbnail stills on each panel
+    //  HERO VIDEO - load iframes after page paint, then cycle
     // ----------------------------------------------------------------------
     const heroPanels = document.querySelectorAll('.hero-video-panel[data-clips]');
-    const CYCLE_INTERVAL = 5000; // ms between image switches
-    const STAGGER = 2000; // offset between panels
+    const CYCLE_INTERVAL = 8000;
+    const STAGGER = 3000;
 
-    heroPanels.forEach((panel, i) => {
-        const clips = panel.dataset.clips.split(',');
-        if (clips.length < 2) return;
-        let index = 0;
+    // Defer iframe injection so page renders instantly with thumbnail placeholders
+    setTimeout(() => {
+        heroPanels.forEach((panel, i) => {
+            const clips = panel.dataset.clips.split(',');
+            const firstClip = clips[0];
 
-        setTimeout(() => {
-            setInterval(() => {
-                index = (index + 1) % clips.length;
-                const img = panel.querySelector('img');
-                if (img) {
-                    img.style.opacity = '0';
-                    setTimeout(() => {
-                        img.src = `https://videodelivery.net/${clips[index]}/thumbnails/thumbnail.jpg?time=2s&height=720`;
-                        img.style.opacity = '1';
-                    }, 300);
-                }
-            }, CYCLE_INTERVAL);
-        }, i * STAGGER);
-    });
+            // Create iframe over the placeholder image
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://iframe.videodelivery.net/${firstClip}?autoplay=true&muted=true&loop=true&controls=false&preload=metadata`;
+            iframe.allow = 'accelerometer; gyroscope; autoplay; encrypted-media;';
+            iframe.allowFullscreen = true;
+            panel.appendChild(iframe);
+
+            // Fade in iframe once it loads, hiding the placeholder behind it
+            iframe.addEventListener('load', () => {
+                iframe.classList.add('loaded');
+            });
+
+            // Cycle through clips
+            if (clips.length > 1) {
+                let index = 0;
+                setTimeout(() => {
+                    setInterval(() => {
+                        index = (index + 1) % clips.length;
+                        iframe.src = `https://iframe.videodelivery.net/${clips[index]}?autoplay=true&muted=true&loop=true&controls=false&preload=metadata`;
+                    }, CYCLE_INTERVAL);
+                }, i * STAGGER);
+            }
+        });
+    }, 1500);
 });
