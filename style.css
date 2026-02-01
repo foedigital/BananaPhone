@@ -293,7 +293,6 @@ section[id] {
   overflow: hidden;
 }
 
-.hero-video-panel img,
 .hero-video-panel iframe {
   position: absolute;
   top: 50%;
@@ -304,9 +303,6 @@ section[id] {
   border: none;
   pointer-events: none;
   object-fit: cover;
-}
-
-.hero-video-panel iframe {
   opacity: 0;
   transition: opacity 0.8s ease;
 }
