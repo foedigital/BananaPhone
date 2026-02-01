@@ -223,40 +223,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------------------------------------------------
-    //  HERO VIDEO - load iframes after page paint, then cycle
+    //  HERO VIDEO - stagger panel loading, then cycle clips
     // ----------------------------------------------------------------------
     const heroPanels = document.querySelectorAll('.hero-video-panel[data-clips]');
-    const CYCLE_INTERVAL = 8000;
-    const STAGGER = 3000;
+    const CYCLE_INTERVAL = 10000;
 
-    // Defer iframe injection so page renders instantly with thumbnail placeholders
+    function injectHeroIframe(panel, clipId) {
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://iframe.videodelivery.net/${clipId}?autoplay=true&muted=true&loop=true&controls=false`;
+        iframe.allow = 'accelerometer; gyroscope; autoplay; encrypted-media;';
+        iframe.allowFullscreen = true;
+        panel.appendChild(iframe);
+        iframe.addEventListener('load', () => iframe.classList.add('loaded'));
+        return iframe;
+    }
+
+    // Panel 1 iframe is already in the HTML — just wire up the fade-in
+    const panel1Iframe = heroPanels[0] && heroPanels[0].querySelector('iframe');
+    if (panel1Iframe) {
+        panel1Iframe.addEventListener('load', () => panel1Iframe.classList.add('loaded'));
+    }
+
+    // Panel 2 — inject after 3s so it doesn't compete with panel 1
+    const deferred2 = heroPanels[1];
+    if (deferred2 && deferred2.dataset.deferred) {
+        setTimeout(() => injectHeroIframe(deferred2, deferred2.dataset.deferred), 3000);
+    }
+
+    // Panel 3 — inject after 6s
+    const deferred3 = heroPanels[2];
+    if (deferred3 && deferred3.dataset.deferred) {
+        setTimeout(() => injectHeroIframe(deferred3, deferred3.dataset.deferred), 6000);
+    }
+
+    // Start cycling clips after all panels have had time to load (15s)
     setTimeout(() => {
         heroPanels.forEach((panel, i) => {
             const clips = panel.dataset.clips.split(',');
-            const firstClip = clips[0];
+            if (clips.length < 2) return;
+            let index = 0;
+            const iframe = panel.querySelector('iframe');
+            if (!iframe) return;
 
-            // Create iframe over the placeholder image
-            const iframe = document.createElement('iframe');
-            iframe.src = `https://iframe.videodelivery.net/${firstClip}?autoplay=true&muted=true&loop=true&controls=false&preload=metadata`;
-            iframe.allow = 'accelerometer; gyroscope; autoplay; encrypted-media;';
-            iframe.allowFullscreen = true;
-            panel.appendChild(iframe);
-
-            // Fade in iframe once it loads, hiding the placeholder behind it
-            iframe.addEventListener('load', () => {
-                iframe.classList.add('loaded');
-            });
-
-            // Cycle through clips
-            if (clips.length > 1) {
-                let index = 0;
-                setTimeout(() => {
-                    setInterval(() => {
-                        index = (index + 1) % clips.length;
-                        iframe.src = `https://iframe.videodelivery.net/${clips[index]}?autoplay=true&muted=true&loop=true&controls=false&preload=metadata`;
-                    }, CYCLE_INTERVAL);
-                }, i * STAGGER);
-            }
+            setTimeout(() => {
+                setInterval(() => {
+                    index = (index + 1) % clips.length;
+                    iframe.src = `https://iframe.videodelivery.net/${clips[index]}?autoplay=true&muted=true&loop=true&controls=false`;
+                }, CYCLE_INTERVAL);
+            }, i * 3000);
         });
-    }, 1500);
+    }, 15000);
 });
