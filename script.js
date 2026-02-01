@@ -249,56 +249,89 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------------------------------------------------
-    //  HERO VIDEO - stagger panel loading, then cycle clips
+    //  HERO VIDEO - random clips, double-buffered seamless cycling
     // ----------------------------------------------------------------------
     const heroPanels = document.querySelectorAll('.hero-video-panel[data-clips]');
     const CYCLE_INTERVAL = 10000;
 
-    function injectHeroIframe(panel, clipId) {
-        return new Promise(resolve => {
-            const iframe = document.createElement('iframe');
-            iframe.src = `https://iframe.videodelivery.net/${clipId}?autoplay=true&muted=true&loop=true&controls=false`;
-            iframe.allow = 'accelerometer; gyroscope; autoplay; encrypted-media;';
-            iframe.allowFullscreen = true;
-            iframe.addEventListener('load', () => resolve(iframe), { once: true });
-            panel.appendChild(iframe);
-        });
+    function shuffle(arr) {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
     }
 
-    // Load panels sequentially: wait for each iframe to load before injecting the next
-    const panel1Iframe = heroPanels[0] && heroPanels[0].querySelector('iframe');
-    if (panel1Iframe) {
-        const loadChain = new Promise(resolve => {
-            if (panel1Iframe.contentDocument && panel1Iframe.contentDocument.readyState === 'complete') resolve();
-            else panel1Iframe.addEventListener('load', resolve, { once: true });
-        });
-
-        loadChain
-            .then(() => {
-                const p2 = heroPanels[1];
-                if (p2 && p2.dataset.deferred) return injectHeroIframe(p2, p2.dataset.deferred);
-            })
-            .then(() => {
-                const p3 = heroPanels[2];
-                if (p3 && p3.dataset.deferred) return injectHeroIframe(p3, p3.dataset.deferred);
-            });
+    function heroSrc(id) {
+        return `https://iframe.videodelivery.net/${id}?autoplay=true&muted=true&loop=true&controls=false`;
     }
 
-    // Start cycling clips after all panels have had time to load (20s)
-    setTimeout(() => {
-        heroPanels.forEach((panel, i) => {
-            const clips = panel.dataset.clips.split(',');
+    function makeIframe(src) {
+        const iframe = document.createElement('iframe');
+        iframe.src = src;
+        iframe.allow = 'accelerometer; gyroscope; autoplay; encrypted-media;';
+        iframe.allowFullscreen = true;
+        return iframe;
+    }
+
+    function initPanel(panel) {
+        const clips = shuffle(panel.dataset.clips.split(','));
+        let idx = 0;
+
+        // Create the visible iframe with a random first clip
+        const active = makeIframe(heroSrc(clips[0]));
+        active.style.zIndex = '2';
+        panel.appendChild(active);
+
+        const loaded = new Promise(resolve => {
+            active.addEventListener('load', resolve, { once: true });
+        });
+
+        function startCycling() {
             if (clips.length < 2) return;
-            let index = 0;
-            const iframe = panel.querySelector('iframe');
-            if (!iframe) return;
 
-            setTimeout(() => {
-                setInterval(() => {
-                    index = (index + 1) % clips.length;
-                    iframe.src = `https://iframe.videodelivery.net/${clips[index]}?autoplay=true&muted=true&loop=true&controls=false`;
-                }, CYCLE_INTERVAL);
-            }, i * 3000);
-        });
-    }, 15000);
+            let front = active;
+            idx = 1;
+
+            // Preload next clip behind the active one
+            let back = makeIframe(heroSrc(clips[idx]));
+            back.style.zIndex = '1';
+            let backReady = false;
+            back.addEventListener('load', () => { backReady = true; }, { once: true });
+            panel.appendChild(back);
+
+            setInterval(() => {
+                if (!backReady) return; // skip swap if preload isn't ready
+
+                // Instant swap — preloaded iframe comes to front
+                back.style.zIndex = '2';
+                front.style.zIndex = '1';
+                [front, back] = [back, front];
+
+                // Start preloading the next clip into the now-hidden iframe
+                idx = (idx + 1) % clips.length;
+                backReady = false;
+                back.addEventListener('load', () => { backReady = true; }, { once: true });
+                back.src = heroSrc(clips[idx]);
+            }, CYCLE_INTERVAL);
+        }
+
+        return { loaded, startCycling };
+    }
+
+    // Load panels one at a time, then start seamless cycling on all
+    async function loadHeroPanels() {
+        const cyclers = [];
+        for (const panel of heroPanels) {
+            const { loaded, startCycling } = initPanel(panel);
+            await loaded;
+            cyclers.push(startCycling);
+        }
+        cyclers.forEach(fn => fn());
+    }
+
+    if (heroPanels.length > 0) {
+        loadHeroPanels();
+    }
 });
