@@ -255,27 +255,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const CYCLE_INTERVAL = 10000;
 
     function injectHeroIframe(panel, clipId) {
-        const iframe = document.createElement('iframe');
-        iframe.src = `https://iframe.videodelivery.net/${clipId}?autoplay=true&muted=true&loop=true&controls=false`;
-        iframe.allow = 'accelerometer; gyroscope; autoplay; encrypted-media;';
-        iframe.allowFullscreen = true;
-        panel.appendChild(iframe);
-        return iframe;
+        return new Promise(resolve => {
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://iframe.videodelivery.net/${clipId}?autoplay=true&muted=true&loop=true&controls=false`;
+            iframe.allow = 'accelerometer; gyroscope; autoplay; encrypted-media;';
+            iframe.allowFullscreen = true;
+            iframe.addEventListener('load', () => resolve(iframe), { once: true });
+            panel.appendChild(iframe);
+        });
     }
 
-    // Panel 2 — inject after 3s so it doesn't compete with panel 1
-    const deferred2 = heroPanels[1];
-    if (deferred2 && deferred2.dataset.deferred) {
-        setTimeout(() => injectHeroIframe(deferred2, deferred2.dataset.deferred), 3000);
+    // Load panels sequentially: wait for each iframe to load before injecting the next
+    const panel1Iframe = heroPanels[0] && heroPanels[0].querySelector('iframe');
+    if (panel1Iframe) {
+        const loadChain = new Promise(resolve => {
+            if (panel1Iframe.contentDocument && panel1Iframe.contentDocument.readyState === 'complete') resolve();
+            else panel1Iframe.addEventListener('load', resolve, { once: true });
+        });
+
+        loadChain
+            .then(() => {
+                const p2 = heroPanels[1];
+                if (p2 && p2.dataset.deferred) return injectHeroIframe(p2, p2.dataset.deferred);
+            })
+            .then(() => {
+                const p3 = heroPanels[2];
+                if (p3 && p3.dataset.deferred) return injectHeroIframe(p3, p3.dataset.deferred);
+            });
     }
 
-    // Panel 3 — inject after 6s
-    const deferred3 = heroPanels[2];
-    if (deferred3 && deferred3.dataset.deferred) {
-        setTimeout(() => injectHeroIframe(deferred3, deferred3.dataset.deferred), 6000);
-    }
-
-    // Start cycling clips after all panels have had time to load (15s)
+    // Start cycling clips after all panels have had time to load (20s)
     setTimeout(() => {
         heroPanels.forEach((panel, i) => {
             const clips = panel.dataset.clips.split(',');
