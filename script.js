@@ -249,19 +249,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------------------------------------------------
-    //  HERO VIDEO - random clips, double-buffered seamless cycling
+    //  HERO VIDEO - sequential load, double-buffered seamless cycling
     // ----------------------------------------------------------------------
     const heroPanels = document.querySelectorAll('.hero-video-panel[data-clips]');
     const CYCLE_INTERVAL = 10000;
-
-    function shuffle(arr) {
-        const a = [...arr];
-        for (let i = a.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [a[i], a[j]] = [a[j], a[i]];
-        }
-        return a;
-    }
 
     function heroSrc(id) {
         return `https://iframe.videodelivery.net/${id}?autoplay=true&muted=true&loop=true&controls=false`;
@@ -275,14 +266,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return iframe;
     }
 
-    function initPanel(panel) {
-        const clips = shuffle(panel.dataset.clips.split(','));
+    function initPanel(panel, existingIframe) {
+        const clips = panel.dataset.clips.split(',');
         let idx = 0;
 
-        // Create the visible iframe with a random first clip
-        const active = makeIframe(heroSrc(clips[0]));
-        active.style.zIndex = '2';
-        panel.appendChild(active);
+        // Use existing iframe from HTML, or create one for the first clip
+        const active = existingIframe || (() => {
+            const f = makeIframe(heroSrc(clips[0]));
+            f.style.zIndex = '2';
+            panel.appendChild(f);
+            return f;
+        })();
 
         const loaded = new Promise(resolve => {
             active.addEventListener('load', resolve, { once: true });
@@ -302,14 +296,12 @@ document.addEventListener('DOMContentLoaded', () => {
             panel.appendChild(back);
 
             setInterval(() => {
-                if (!backReady) return; // skip swap if preload isn't ready
+                if (!backReady) return;
 
-                // Instant swap — preloaded iframe comes to front
                 back.style.zIndex = '2';
                 front.style.zIndex = '1';
                 [front, back] = [back, front];
 
-                // Start preloading the next clip into the now-hidden iframe
                 idx = (idx + 1) % clips.length;
                 backReady = false;
                 back.addEventListener('load', () => { backReady = true; }, { once: true });
@@ -320,14 +312,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return { loaded, startCycling };
     }
 
-    // Load panels one at a time, then start seamless cycling on all
+    // Panel 1 iframe is already in the HTML for instant loading
     async function loadHeroPanels() {
         const cyclers = [];
-        for (const panel of heroPanels) {
-            const { loaded, startCycling } = initPanel(panel);
-            await loaded;
-            cyclers.push(startCycling);
+
+        // Panel 1 — use the iframe already in HTML
+        const p1Iframe = heroPanels[0] && heroPanels[0].querySelector('iframe');
+        if (p1Iframe) {
+            const p1 = initPanel(heroPanels[0], p1Iframe);
+            await p1.loaded;
+            cyclers.push(p1.startCycling);
         }
+
+        // Panels 2 & 3 — inject sequentially after previous loads
+        for (let i = 1; i < heroPanels.length; i++) {
+            const p = initPanel(heroPanels[i]);
+            await p.loaded;
+            cyclers.push(p.startCycling);
+        }
+
         cyclers.forEach(fn => fn());
     }
 
